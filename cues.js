@@ -29,7 +29,7 @@
      unlock Edit > Change passcode > Export show file, then paste
      the exported file over this one. Delete this line to remove the lock.
 
-   Volumes/fades changed in Edit mode on a device are saved on
+   Words, volumes and fades changed in Edit mode on a device are saved on
    that device only. Use "Export show file" to copy them back here.
    ============================================================ */
 var SHOW = {

@@ -1,4 +1,16 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Soundboard">
+<meta name="theme-color" content="#0b0e13">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 <title>Booth Soundboard</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -115,7 +127,7 @@ ol.cues{list-style:none;margin:8px 0 0;padding:0 6px 8px;overflow-y:auto;flex:1;
 body.editing .cue,body.editing .pad{outline:1px dashed var(--faint);outline-offset:-3px}
 .editbanner{display:none;background:rgba(233,166,58,.12);border:1px solid #6b4a1c;color:var(--standby);border-radius:var(--r);padding:8px 12px;font-size:13px;align-items:center;gap:10px;flex-wrap:wrap}
 body.editing .editbanner{display:flex}
-.editbanner span{flex:1;min-width:200px}
+.editbanner > span{flex:1;min-width:200px}
 .editbanner .btn{font-size:13px;padding:6px 10px}
 
 /* sheets */
@@ -147,6 +159,17 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
 .loadmsg{font-size:13px;color:var(--dim)}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:13px;z-index:40}
 
+/* text fields in Edit mode */
+.trow{display:grid;grid-template-columns:6.5em minmax(0,1fr);gap:10px}
+.trow.withkey{grid-template-columns:6.5em minmax(0,1fr) 4.5em}
+.tf{display:flex;flex-direction:column;gap:4px;min-width:0}
+.tf label{color:var(--dim);font-size:12px;letter-spacing:.04em}
+input.txt{font-size:16px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%;box-sizing:border-box;min-width:0;-webkit-user-select:text;user-select:text}
+input.txt:focus{border-color:var(--standby);outline:none}
+.fieldmsg{font-size:12.5px;color:var(--stop);min-height:1.2em}
+.titlefield{display:flex;align-items:center;gap:8px;flex:1 1 100%}
+.titlefield label{font-size:13px;white-space:nowrap}
+.titlefield input{max-width:420px}
 /* passcode keypad */
 .lockdots{display:flex;gap:12px;justify-content:center;min-height:22px}
 .lockdots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--dim)}
@@ -177,6 +200,8 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
+</head>
+<body>
 <div class="gate" id="gate">
   <div class="gate-in">
     <div class="eyebrow">Sound board</div>
@@ -205,7 +230,7 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
 
   <div class="main">
     <div class="col">
-      <div class="editbanner"><span>Edit mode: tap a cue or button to set its volume, fades and looping. Changes save on this device.</span><button class="btn" id="exportBtn">Export show file</button><button class="btn" id="resetBtn">Undo all edits</button><button class="btn" id="pinBtn">Change passcode</button></div>
+      <div class="editbanner"><div class="titlefield"><label for="titleInput">Show title</label><input class="txt" id="titleInput" type="text" maxlength="80" autocomplete="off"></div><span>Tap a cue or button to change its words, volume, fades and looping. Changes save on this device.</span><button class="btn" id="exportBtn">Export show file</button><button class="btn" id="resetBtn">Undo all edits</button><button class="btn" id="pinBtn">Change passcode</button></div>
       <section class="panel">
         <div class="goblock">
           <div style="min-width:0">
@@ -240,10 +265,19 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
   <div class="sheet" role="dialog" aria-labelledby="insTitle">
     <h3 id="insTitle"><span class="num" id="insId"></span><span id="insName"></span></h3>
     <p id="insFile"></p>
+    <div class="trow" id="insRow1">
+      <div class="tf"><label for="insIdIn">Cue ID</label><input class="txt" id="insIdIn" type="text" maxlength="8" autocomplete="off" autocapitalize="characters"></div>
+      <div class="tf"><label for="insNameIn">Name</label><input class="txt" id="insNameIn" type="text" maxlength="60" autocomplete="off"></div>
+      <div class="tf" id="insKeyWrap"><label for="insKeyIn">Key</label><input class="txt" id="insKeyIn" type="text" maxlength="1" autocomplete="off" autocapitalize="none"></div>
+    </div>
+    <div class="tf" id="insNoteWrap"><label for="insNoteIn">Called on (the line or action)</label><input class="txt" id="insNoteIn" type="text" maxlength="140" autocomplete="off"></div>
+    <div class="fieldmsg" id="insMsg"></div>
+    <div id="insAudio" style="display:flex;flex-direction:column;gap:14px">
     <div class="field"><label for="insVol">Volume</label><input type="range" id="insVol" min="0" max="100"><output id="insVolOut" class="num"></output></div>
     <div class="field"><label for="insIn">Fade in</label><input type="range" id="insIn" min="0" max="15" step="0.5"><output id="insInOut" class="num"></output></div>
     <div class="field"><label for="insOut">Fade out</label><input type="range" id="insOut" min="0" max="15" step="0.5"><output id="insOutOut" class="num"></output></div>
     <label class="toggle"><input type="checkbox" id="insLoop"> Loop until faded or stopped</label>
+    </div>
     <div class="row"><button class="btn primary" id="insPlay">Preview</button><button class="btn" id="insStop">Stop preview</button><button class="btn" id="insRevert">Revert this cue</button><button class="btn" id="insClose" style="margin-left:auto">Done</button></div>
   </div>
 </div>
@@ -294,6 +328,9 @@ SHOWCFG.cues.forEach(function(c){ c._list = "cue"; allItems.push(c); });
 SHOWCFG.extras.forEach(function(c){ c._list = "extra"; allItems.push(c); });
 var byId = {}; allItems.forEach(function(c){ byId[c.id] = c; });
 
+function dispId(id){ return byId[id] ? eff(byId[id]).id : id; }
+function showTitle(){ return edits.__title || SHOWCFG.title; }
+function applyTitle(){ var t = showTitle(); document.title = t + " · Soundboard"; $("title").textContent = t; $("gateTitle").textContent = t; }
 function eff(c){
   var e = Object.assign({}, c, edits[c.id] || {});
   if (e.volume == null) e.volume = 100;
@@ -390,8 +427,8 @@ function go(){
 function setStandby(i){ standby = Math.max(0, Math.min(SHOWCFG.cues.length, i)); renderCues(true); }
 
 function describe(c){
-  if (c.action === "fade") return '<span class="tag fade">Fade ' + esc(c.target) + "</span>" + (c.fade != null ? '<span class="num">' + c.fade + " s</span>" : "");
-  if (c.action === "stop") return '<span class="tag stop">Stop ' + esc(c.target) + "</span>";
+  if (c.action === "fade") return '<span class="tag fade">Fade ' + esc(dispId(c.target)) + "</span>" + (c.fade != null ? '<span class="num">' + c.fade + " s</span>" : "");
+  if (c.action === "stop") return '<span class="tag stop">Stop ' + esc(dispId(c.target)) + "</span>";
   var e = eff(c), out = "";
   if (!hasAudio(e) && buffers[e.file] === "error") out += '<span class="tag miss">Missing</span>';
   if (e.loop) out += '<span class="tag loop">Loop</span>';
@@ -404,13 +441,15 @@ function renderCues(scroll){
     var li = document.createElement("li");
     li.className = "cue" + (i < standby ? " done" : "") + (i === standby ? " standby" : "");
     li.tabIndex = 0; li.dataset.i = i;
-    li.innerHTML = '<span class="id num">' + esc(c.id) + '</span><span class="nm">' + esc(c.name || "") + '</span><span class="meta">' + describe(c) + "</span>" + (c.note ? '<span class="nt">' + esc(c.note) + "</span>" : "");
+    var e = eff(c);
+    li.innerHTML = '<span class="id num">' + esc(e.id) + '</span><span class="nm">' + esc(e.name || "") + '</span><span class="meta">' + describe(c) + "</span>" + (e.note ? '<span class="nt">' + esc(e.note) + "</span>" : "");
     list.appendChild(li);
   });
   var c = SHOWCFG.cues[standby];
-  $("sbId").textContent = c ? c.id : "—";
-  $("sbName").textContent = c ? (c.name || "") : "End of cue list";
-  $("sbNote").textContent = c && c.note ? "Called on: " + c.note : "";
+  var ce = c ? eff(c) : null;
+  $("sbId").textContent = ce ? ce.id : "—";
+  $("sbName").textContent = ce ? (ce.name || "") : "End of cue list";
+  $("sbNote").textContent = ce && ce.note ? "Called on: " + ce.note : "";
   $("goBtn").disabled = !c;
   if (scroll) { var el = list.children[Math.min(standby, list.children.length - 1)]; if (el) el.scrollIntoView({block:"nearest"}); }
   markLive();
@@ -418,7 +457,7 @@ function renderCues(scroll){
 $("cueList").addEventListener("click", function(ev){
   var li = ev.target.closest(".cue"); if (!li) return;
   var c = SHOWCFG.cues[+li.dataset.i];
-  if (editing) { if (!c.action) openInspector(c); return; }
+  if (editing) { openInspector(c); return; }
   setStandby(+li.dataset.i);
 });
 
@@ -429,7 +468,7 @@ function renderGrid(){
     var e = eff(c), b = document.createElement("button");
     b.className = "pad" + (e.loop ? " lp" : "") + (buffers[e.file] === "error" ? " missing" : "");
     b.dataset.id = c.id;
-    b.innerHTML = '<span class="fill"></span><span class="pn">' + esc(c.name) + '</span><span class="pm"><span>' + (buffers[e.file] === "error" ? "Missing file" : (e.loop ? "Loop" : (hasAudio(e) ? fmt(buffers[e.file].duration) : ""))) + "</span>" + (c.key ? "<kbd>" + esc(c.key) + "</kbd>" : "") + "</span>";
+    b.innerHTML = '<span class="fill"></span><span class="pn">' + esc(e.name) + '</span><span class="pm"><span>' + (buffers[e.file] === "error" ? "Missing file" : (e.loop ? "Loop" : (hasAudio(e) ? fmt(buffers[e.file].duration) : ""))) + "</span>" + (e.key ? "<kbd>" + esc(e.key) + "</kbd>" : "") + "</span>";
     grid.appendChild(b);
   });
 }
@@ -445,7 +484,7 @@ function render(){
   voices.forEach(function(v){
     var li = document.createElement("li");
     li.className = "voice" + (v.loop ? " lp" : "") + (v.fading ? " fading" : "");
-    li.innerHTML = '<span class="vn"><span class="num">' + esc(v.cue.id) + "</span><b>" + esc(v.cue.name) + "</b>" + (v.preview ? " (preview)" : "") + (v.fading ? " · fading" : "") + '</span><span class="t num"></span><span class="row" style="gap:6px"><button class="f">Fade</button><button class="x">Stop</button></span><span class="bar2"><i></i></span>';
+    li.innerHTML = '<span class="vn"><span class="num">' + esc(eff(v.cue).id) + "</span><b>" + esc(eff(v.cue).name) + "</b>" + (v.preview ? " (preview)" : "") + (v.fading ? " · fading" : "") + '</span><span class="t num"></span><span class="row" style="gap:6px"><button class="f">Fade</button><button class="x">Stop</button></span><span class="bar2"><i></i></span>';
     li.querySelector(".f").onclick = function(){ fade(v, eff(v.cue).fadeOut || 2); };
     li.querySelector(".x").onclick = function(){ fade(v, 0.05); };
     v.el = li; ul.appendChild(li);
@@ -481,6 +520,7 @@ function tick(){
 var editing = false, insCue = null;
 function setEditing(on){
   editing = on; document.body.classList.toggle("editing", on);
+  if (on) $("titleInput").value = showTitle();
   $("editBtn").classList.toggle("on", on); $("editBtn").setAttribute("aria-pressed", on);
   $("editLabel").textContent = on ? "Done editing" : "Edit";
   $("editBtn").querySelector(".lockicon").style.display = on ? "none" : "";
@@ -555,10 +595,16 @@ $("lockCancel").onclick = closeLock;
 $("locker").addEventListener("click", function(ev){ if (ev.target === this) closeLock(); });
 $("pinBtn").onclick = function(){ openLock("set"); };
 function openInspector(c){
-  insCue = c; var e = eff(c);
-  $("insId").textContent = c.id; $("insName").textContent = c.name;
-  $("insFile").textContent = c.file + (buffers[c.file] === "error" ? " — file not found" : "");
+  insCue = c; var e = eff(c), isExtra = c._list === "extra", isAction = !!c.action;
+  $("insId").textContent = e.id; $("insName").textContent = e.name || "";
+  $("insFile").textContent = isAction ? (c.action === "fade" ? "Fades out " : "Stops ") + dispId(c.target) + (c.action === "fade" && c.fade != null ? " over " + c.fade + " s" : "")
+    : c.file + (buffers[c.file] === "error" ? " — file not found" : "");
+  $("insIdIn").value = e.id; $("insNameIn").value = e.name || ""; $("insNoteIn").value = e.note || ""; $("insKeyIn").value = e.key || "";
+  $("insKeyWrap").hidden = !isExtra; $("insRow1").classList.toggle("withkey", isExtra);
+  $("insNoteWrap").hidden = isExtra;
+  $("insAudio").hidden = isAction; $("insPlay").hidden = isAction; $("insStop").hidden = isAction;
   $("insVol").value = e.volume; $("insIn").value = e.fadeIn; $("insOut").value = e.fadeOut; $("insLoop").checked = e.loop;
+  $("insMsg").textContent = "";
   syncIns(); $("inspector").hidden = false;
 }
 function syncIns(){
@@ -567,36 +613,65 @@ function syncIns(){
   $("insOutOut").textContent = (+$("insOut").value).toFixed(1) + " s";
 }
 function storeIns(){
-  var c = insCue, ed = {};
-  var vals = {volume:+$("insVol").value, fadeIn:+$("insIn").value, fadeOut:+$("insOut").value, loop:$("insLoop").checked};
-  var orig = {volume:c.volume == null ? 100 : c.volume, fadeIn:+c.fadeIn || 0, fadeOut:+c.fadeOut || 0, loop:!!c.loop};
+  var c = insCue, ed = {}, msg = "", isExtra = c._list === "extra";
+  var vals = {}, orig = {};
+  // words
+  var newId = $("insIdIn").value.trim(), newName = $("insNameIn").value.trim();
+  var prev = eff(c);
+  if (!newId) { newId = prev.id; msg = "A cue needs an ID."; }
+  else if (allItems.some(function(o){ return o !== c && eff(o).id.toLowerCase() === newId.toLowerCase(); })) { msg = newId + " is already used by another cue."; newId = prev.id; }
+  vals.id = newId; orig.id = c.id;
+  vals.name = newName || prev.name; orig.name = c.name || "";
+  if (!newName) msg = msg || "A cue needs a name.";
+  if (isExtra) {
+    var k = $("insKeyIn").value.trim().toLowerCase();
+    if (k === "f") { msg = "F is taken by Fade all."; k = prev.key || ""; }
+    else if (k && SHOWCFG.extras.some(function(o){ return o !== c && (eff(o).key || "").toLowerCase() === k; })) { msg = "Key " + k + " is already used by another button."; k = prev.key || ""; }
+    vals.key = k; orig.key = c.key || "";
+  } else { vals.note = $("insNoteIn").value.trim(); orig.note = c.note || ""; }
+  // sound
+  if (!c.action) {
+    vals.volume = +$("insVol").value; vals.fadeIn = +$("insIn").value; vals.fadeOut = +$("insOut").value; vals.loop = $("insLoop").checked;
+    orig.volume = c.volume == null ? 100 : c.volume; orig.fadeIn = +c.fadeIn || 0; orig.fadeOut = +c.fadeOut || 0; orig.loop = !!c.loop;
+  }
   Object.keys(vals).forEach(function(k){ if (vals[k] !== orig[k]) ed[k] = vals[k]; });
   if (Object.keys(ed).length) edits[c.id] = ed; else delete edits[c.id];
   saveEdits(); syncIns();
+  $("insMsg").textContent = msg;
+  $("insId").textContent = vals.id; $("insName").textContent = vals.name;
+  if (c.action) return;
   voices.forEach(function(v){ if (v.cue.id === c.id && !v.fading) { v.g.gain.setTargetAtTime(gainFor(vals.volume), ctx.currentTime, 0.03); v.src.loop = vals.loop; v.loop = vals.loop; } });
 }
-["insVol","insIn","insOut","insLoop"].forEach(function(id){ $(id).addEventListener("input", storeIns); $(id).addEventListener("change", storeIns); });
+["insVol","insIn","insOut","insLoop","insIdIn","insNameIn","insNoteIn","insKeyIn"].forEach(function(id){ $(id).addEventListener("input", storeIns); $(id).addEventListener("change", storeIns); });
 $("insPlay").onclick = function(){ play(insCue, {preview:true}); };
 $("insStop").onclick = function(){ voices.forEach(function(v){ if (v.preview) fade(v, eff(v.cue).fadeOut || 0.2); }); };
-$("insRevert").onclick = function(){ delete edits[insCue.id]; saveEdits(); openInspector(insCue); toast(insCue.id + " back to the show file's settings"); };
+$("insRevert").onclick = function(){ delete edits[insCue.id]; saveEdits(); openInspector(insCue); toast(insCue.id + " back to the show file's version"); };
 $("insClose").onclick = closeInspector;
+$("titleInput").addEventListener("input", function(){
+  var t = this.value.trim();
+  if (t && t !== SHOWCFG.title) edits.__title = t; else delete edits.__title;
+  saveEdits(); applyTitle();
+});
 $("inspector").addEventListener("click", function(ev){ if (ev.target === this) closeInspector(); });
-function closeInspector(){ $("inspector").hidden = true; renderCues(); renderGrid(); markLive(); }
+function closeInspector(){ $("inspector").hidden = true; renderCues(); renderGrid(); render(); }
 
 var resetArmed = false;
 $("resetBtn").onclick = function(){
   if (!resetArmed) { resetArmed = true; this.textContent = "Tap again to undo all"; var b = this; setTimeout(function(){ resetArmed = false; b.textContent = "Undo all edits"; }, 3000); return; }
-  edits = {}; saveEdits(); resetArmed = false; this.textContent = "Undo all edits"; renderCues(); renderGrid(); toast("All edits cleared");
+  edits = {}; saveEdits(); resetArmed = false; this.textContent = "Undo all edits"; $("titleInput").value = SHOWCFG.title; applyTitle(); renderCues(); renderGrid(); render(); toast("All edits cleared");
 };
 
 function exportText(){
   function line(c){
     var o = {}; Object.keys(c).forEach(function(k){ if (k[0] !== "_") o[k] = c[k]; });
-    if (!c.action) Object.assign(o, edits[c.id] || {});
+    Object.assign(o, edits[c.id] || {});
+    if (o.target) o.target = dispId(o.target);
+    if (o.note === "") delete o.note;
+    if (o.key === "") delete o.key;
     return "    " + JSON.stringify(o);
   }
   var head = "/* SHOW FILE — exported from the soundboard " + new Date().toLocaleString() + ".\n   See the original cues.js for a description of every field. */\n";
-  return head + "var SHOW = {\n  \"title\": " + JSON.stringify(SHOWCFG.title) + ",\n" + (passHash ? "  \"editPasscodeHash\": " + JSON.stringify(passHash) + ",\n" : "") + "  \"cues\": [\n" + SHOWCFG.cues.map(line).join(",\n") + "\n  ],\n  \"extras\": [\n" + SHOWCFG.extras.map(line).join(",\n") + "\n  ]\n};\n";
+  return head + "var SHOW = {\n  \"title\": " + JSON.stringify(showTitle()) + ",\n" + (passHash ? "  \"editPasscodeHash\": " + JSON.stringify(passHash) + ",\n" : "") + "  \"cues\": [\n" + SHOWCFG.cues.map(line).join(",\n") + "\n  ],\n  \"extras\": [\n" + SHOWCFG.extras.map(line).join(",\n") + "\n  ]\n};\n";
 }
 $("exportBtn").onclick = function(){ $("expText").value = exportText(); $("exporter").hidden = false; };
 $("expClose").onclick = function(){ $("exporter").hidden = true; };
@@ -639,7 +714,7 @@ document.addEventListener("keydown", function(ev){
   if (ev.repeat) return;
   if (ev.key === "f" || ev.key === "F") { fadeAll(); return; }
   var k = ev.key.toLowerCase();
-  SHOWCFG.extras.forEach(function(c){ if (c.key && c.key.toLowerCase() === k) { ev.preventDefault(); play(c); } });
+  SHOWCFG.extras.forEach(function(c){ var ky = eff(c).key; if (ky && ky.toLowerCase() === k) { ev.preventDefault(); play(c); } });
 });
 
 /* ---------- screen wake lock ---------- */
@@ -677,8 +752,7 @@ var toastT;
 function toast(msg){ var t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function(){ t.hidden = true; }, 2200); }
 
 /* ---------- boot ---------- */
-document.title = SHOWCFG.title + " · Soundboard";
-$("title").textContent = SHOWCFG.title; $("gateTitle").textContent = SHOWCFG.title;
+applyTitle();
 makeContext();
 renderCues(); renderGrid(); render();
 loadAll(function(d, n){ $("meter").style.width = (d / n * 100) + "%"; $("loadmsg").textContent = "Loaded " + d + " of " + n + " sound files"; })
@@ -699,4 +773,5 @@ requestAnimationFrame(tick);
 })();
 </script>
 
-</body></html>
+</body>
+</html>

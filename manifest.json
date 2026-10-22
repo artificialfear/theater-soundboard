@@ -1,0 +1,10 @@
+{
+  "name": "Booth Soundboard",
+  "short_name": "Soundboard",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0e13",
+  "theme_color": "#0b0e13",
+  "icons": [{"src": "icon.png", "sizes": "512x512", "type": "image/png"}]
+}
