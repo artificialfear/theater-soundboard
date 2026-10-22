@@ -1,0 +1,594 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Booth Soundboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: booth console — top transport bar; cue stack (GO) on the left, live voices + extras grid on the right. Stacks to one column on phones. Deliberately dark-only: the screen must not glow into the house. */
+:root{
+  color-scheme: dark;
+  --bg:#0b0e13; --panel:#131821; --raise:#1a212d; --line:#273041;
+  --fg:#e3e7ee; --dim:#8a95a8; --faint:#5b6578;
+  --go:#2fbf71; --go-ink:#03140a; --standby:#e9a63a; --stop:#e2554d; --loop:#5aa8e8;
+  --display:"Barlow Condensed","Arial Narrow","Helvetica Neue",Arial,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overflow:hidden}
+button,input{font:inherit;color:inherit}
+button{touch-action:manipulation;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible,li:focus-visible{outline:2px solid var(--standby);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));padding-block:10px;gap:10px;box-sizing:border-box}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.show{flex:1 1 220px;min-width:0}
+.show h1{margin:0;font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status{display:flex;gap:8px;font-size:12px;color:var(--dim);flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px}
+.chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.chip.ok::before{background:var(--go)} .chip.warn::before{background:var(--standby)} .chip.bad::before{background:var(--stop)}
+.master{display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px}
+.master label{font-family:var(--display);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.master output{width:3.2em;text-align:right;font-size:13px}
+input[type=range]{width:120px;accent-color:var(--standby)}
+.btn{white-space:nowrap;font-family:var(--display);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:15px;padding:10px 14px;border-radius:var(--r);background:var(--raise);border:1px solid var(--line)}
+.btn:active{transform:translateY(1px)}
+.btn.on{background:var(--standby);color:#1b1205;border-color:var(--standby)}
+.btn.fadeall{border-color:#6b4a1c;color:var(--standby)}
+.btn.stopall{background:var(--stop);border-color:var(--stop);color:#fff;font-size:17px;padding:10px 18px}
+
+/* main */
+.main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:10px;min-height:0}
+.col{display:flex;flex-direction:column;gap:10px;min-height:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);min-height:0}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:9px 12px 0}
+.ph h2{margin:0;font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.ph small{color:var(--faint);font-size:12px}
+
+/* GO block */
+.goblock{display:grid;grid-template-columns:1fr auto;gap:12px;padding:12px;align-items:stretch}
+.sb-label{font-family:var(--display);font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--standby)}
+.sb-cue{display:flex;align-items:baseline;gap:10px;margin-top:2px;min-width:0}
+.sb-cue .num{font-size:26px;color:var(--standby)}
+.sb-cue .nm{font-family:var(--display);font-size:30px;font-weight:600;line-height:1.05;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sb-note{color:var(--dim);font-size:13px;margin-top:6px;min-height:1.3em}
+.sb-nav{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.sb-nav .btn{font-size:13px;padding:7px 11px}
+.go{min-width:150px;border-radius:14px;background:var(--go);color:var(--go-ink);font-family:var(--display);font-weight:700;font-size:56px;letter-spacing:.06em;box-shadow:inset 0 -5px 0 rgba(0,0,0,.25)}
+.go:active{transform:translateY(2px);box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.go:disabled{background:var(--raise);color:var(--faint);box-shadow:none;cursor:default}
+.go.locked{filter:brightness(.75)}
+.go kbd{display:block;font-family:var(--body);font-size:11px;font-weight:500;letter-spacing:.05em;opacity:.65}
+
+/* cue list */
+.cuepanel{flex:1;display:flex;flex-direction:column}
+ol.cues{list-style:none;margin:8px 0 0;padding:0 6px 8px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+.cue{display:grid;grid-template-columns:3.2em minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:9px 10px;border-radius:8px;cursor:pointer;border-left:4px solid transparent}
+.cue + .cue{margin-top:2px}
+.cue .id{color:var(--dim);font-size:14px}
+.cue .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cue .nt{grid-column:2/4;color:var(--faint);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cue .meta{display:flex;gap:6px;align-items:center;color:var(--faint);font-size:12px}
+.tag{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border-radius:4px;border:1px solid currentColor}
+.tag.loop{color:var(--loop)} .tag.fade{color:var(--standby)} .tag.stop{color:var(--stop)} .tag.miss{color:var(--stop)}
+.cue.done{opacity:.45}
+.cue.standby{background:rgba(233,166,58,.12);border-left-color:var(--standby)}
+.cue.standby .id{color:var(--standby)}
+.cue.live .id{color:var(--go)}
+.cue:hover{background:var(--raise)}
+.cue.standby:hover{background:rgba(233,166,58,.18)}
+
+/* now playing */
+.nowp{display:flex;flex-direction:column;max-height:42%}
+.voices{list-style:none;margin:8px 0 0;padding:0 8px 8px;overflow-y:auto}
+.voice{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;padding:7px 8px;border-radius:8px;background:var(--raise)}
+.voice + .voice{margin-top:5px}
+.voice .vn{min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice .vn b{font-weight:600} .voice .vn .num{color:var(--dim);font-size:12px;margin-right:6px}
+.voice .bar2{grid-column:1/4;height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.voice .bar2 i{display:block;height:100%;width:0;background:var(--go)}
+.voice.lp .bar2 i{background:var(--loop)}
+.voice.fading{opacity:.6} .voice.fading .bar2 i{background:var(--standby)}
+.voice .t{font-size:12px;color:var(--dim)}
+.voice button{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:5px 9px;border-radius:6px;border:1px solid var(--line)}
+.voice button.x{color:var(--stop);border-color:#5a2724}
+.empty{color:var(--faint);font-size:13px;padding:10px 12px 12px}
+
+/* extras grid */
+.extras{flex:1;display:flex;flex-direction:column}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;padding:10px;overflow-y:auto;align-content:start}
+.pad{position:relative;overflow:hidden;min-height:86px;border-radius:var(--r);background:var(--raise);border:1px solid var(--line);text-align:left;padding:10px;display:flex;flex-direction:column;justify-content:space-between;gap:6px}
+.pad .fill{position:absolute;inset:0;width:0;background:rgba(47,191,113,.16);pointer-events:none}
+.pad.lp .fill{background:rgba(90,168,232,.16)}
+.pad .pn{position:relative;font-family:var(--display);font-weight:600;font-size:20px;line-height:1.05}
+.pad .pm{position:relative;display:flex;justify-content:space-between;align-items:center;color:var(--faint);font-size:12px}
+.pad kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--dim)}
+.pad.live{border-color:var(--go)} .pad.live.lp{border-color:var(--loop)}
+.pad.missing{opacity:.5}
+.pad:active{transform:scale(.985)}
+
+/* edit mode */
+body.editing .cue,body.editing .pad{outline:1px dashed var(--faint);outline-offset:-3px}
+.editbanner{display:none;background:rgba(233,166,58,.12);border:1px solid #6b4a1c;color:var(--standby);border-radius:var(--r);padding:8px 12px;font-size:13px;align-items:center;gap:10px;flex-wrap:wrap}
+body.editing .editbanner{display:flex}
+.editbanner span{flex:1;min-width:200px}
+.editbanner .btn{font-size:13px;padding:6px 10px}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;z-index:20;padding:0 max(12px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(12px,env(safe-area-inset-left,0px))}
+.sheet{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--line);border-radius:14px 14px 0 0;padding:16px;display:flex;flex-direction:column;gap:14px;max-height:88%;overflow-y:auto;box-sizing:border-box}
+.sheet h3{margin:0;font-family:var(--display);font-size:26px;font-weight:600}
+.sheet h3 .num{font-size:18px;color:var(--standby);margin-right:8px}
+.sheet p{margin:0;color:var(--dim);font-size:13px;line-height:1.45}
+.field{display:grid;grid-template-columns:7em minmax(0,1fr) 4.2em;align-items:center;gap:10px}
+.field label{color:var(--dim);font-size:13px}
+.field input[type=range]{width:100%}
+.field output{text-align:right;font-size:13px}
+.toggle{display:flex;align-items:center;gap:10px;font-size:14px}
+.toggle input{width:20px;height:20px;accent-color:var(--loop)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row .btn{font-size:14px}
+.btn.primary{background:var(--go);color:var(--go-ink);border-color:var(--go)}
+textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;font-family:var(--mono);font-size:11.5px;padding:10px;-webkit-user-select:text;user-select:text;resize:vertical}
+
+/* start gate */
+.gate{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.gate-in{max-width:440px;width:100%;display:flex;flex-direction:column;gap:16px}
+.gate .eyebrow{font-family:var(--display);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--standby)}
+.gate h2{margin:0;font-family:var(--display);font-size:40px;font-weight:600;line-height:1;text-wrap:balance}
+.meter{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--go);transition:width .2s}
+.gate .go{font-size:30px;padding:18px;min-width:0}
+.gate ul{margin:0;padding-left:18px;color:var(--dim);font-size:13px;line-height:1.55}
+.loadmsg{font-size:13px;color:var(--dim)}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:13px;z-index:40}
+
+@media (max-width:820px){
+  body{overflow:auto}
+  html,body{height:auto}
+  .app{height:auto}
+  .main{grid-template-columns:minmax(0,1fr)}
+  .nowp{max-height:none}
+  ol.cues{max-height:50vh}
+  .go{min-width:110px;font-size:42px}
+  .sb-cue .nm{font-size:24px}
+  .master{flex:1 1 100%}
+  .master input{flex:1}
+  .bar .btn{flex:1}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="gate" id="gate">
+  <div class="gate-in">
+    <div class="eyebrow">Sound board</div>
+    <h2 id="gateTitle">Loading show…</h2>
+    <div class="meter"><i id="meter"></i></div>
+    <div class="loadmsg num" id="loadmsg">Preparing audio files</div>
+    <button class="go" id="startBtn">Open the board</button>
+    <ul>
+      <li>Tap once here so the iPad allows sound. Nothing plays until you press GO or a button.</li>
+      <li>Space = GO · ↑ ↓ = move standby · Esc = stop all · number keys = extras</li>
+    </ul>
+  </div>
+</div>
+
+<div class="app">
+  <header class="bar">
+    <div class="show">
+      <h1 id="title">Show</h1>
+      <div class="status"><span class="chip" id="offlineChip">Checking offline copy</span><span class="chip" id="wakeChip">Screen lock</span><span class="chip" id="filesChip">Files</span></div>
+    </div>
+    <div class="master"><label for="master">Master</label><input type="range" id="master" min="0" max="100" value="100"><output id="masterOut" class="num">100%</output></div>
+    <button class="btn" id="editBtn" aria-pressed="false">Edit</button>
+    <button class="btn fadeall" id="fadeAllBtn" title="Fade everything out over 3 seconds (F)">Fade all</button>
+    <button class="btn stopall" id="stopAllBtn" title="Stop everything now (Esc)">Stop all</button>
+  </header>
+
+  <div class="main">
+    <div class="col">
+      <div class="editbanner"><span>Edit mode: tap a cue or button to set its volume, fades and looping. Changes save on this device.</span><button class="btn" id="exportBtn">Export show file</button><button class="btn" id="resetBtn">Undo all edits</button></div>
+      <section class="panel">
+        <div class="goblock">
+          <div style="min-width:0">
+            <div class="sb-label">Standby</div>
+            <div class="sb-cue"><span class="num" id="sbId">—</span><span class="nm" id="sbName">End of cue list</span></div>
+            <div class="sb-note" id="sbNote"></div>
+            <div class="sb-nav"><button class="btn" id="prevBtn">↑ Back</button><button class="btn" id="nextBtn">Skip ↓</button><button class="btn" id="topBtn">Reset to top</button></div>
+          </div>
+          <button class="go" id="goBtn">GO<kbd>space</kbd></button>
+        </div>
+      </section>
+      <section class="panel cuepanel">
+        <div class="ph"><h2>Cue list</h2><small>Tap a cue to put it in standby</small></div>
+        <ol class="cues" id="cueList"></ol>
+      </section>
+    </div>
+    <div class="col">
+      <section class="panel nowp">
+        <div class="ph"><h2>Now playing</h2><small id="voiceCount"></small></div>
+        <ul class="voices" id="voices"></ul>
+        <div class="empty" id="noVoices">Silence. Fired cues appear here with their own fade and stop buttons.</div>
+      </section>
+      <section class="panel extras">
+        <div class="ph"><h2>Extras</h2><small>Tap to play · loops tap again to fade</small></div>
+        <div class="grid" id="grid"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="inspector" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="insTitle">
+    <h3 id="insTitle"><span class="num" id="insId"></span><span id="insName"></span></h3>
+    <p id="insFile"></p>
+    <div class="field"><label for="insVol">Volume</label><input type="range" id="insVol" min="0" max="100"><output id="insVolOut" class="num"></output></div>
+    <div class="field"><label for="insIn">Fade in</label><input type="range" id="insIn" min="0" max="15" step="0.5"><output id="insInOut" class="num"></output></div>
+    <div class="field"><label for="insOut">Fade out</label><input type="range" id="insOut" min="0" max="15" step="0.5"><output id="insOutOut" class="num"></output></div>
+    <label class="toggle"><input type="checkbox" id="insLoop"> Loop until faded or stopped</label>
+    <div class="row"><button class="btn primary" id="insPlay">Preview</button><button class="btn" id="insStop">Stop preview</button><button class="btn" id="insRevert">Revert this cue</button><button class="btn" id="insClose" style="margin-left:auto">Done</button></div>
+  </div>
+</div>
+
+<div class="scrim" id="exporter" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="expTitle">
+    <h3 id="expTitle">Export show file</h3>
+    <p>This is your show file with this device's edits included. Replace <b>cues.js</b> in the board's folder with it, then upload the folder again so every device gets the same levels.</p>
+    <textarea id="expText" readonly></textarea>
+    <div class="row"><button class="btn primary" id="expCopy">Copy</button><button class="btn" id="expDownload">Download cues.js</button><button class="btn" id="expClose" style="margin-left:auto">Close</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="cues.js"></script>
+<script>
+(function(){
+"use strict";
+var SHOWCFG = window.SHOW || {title:"No show file found", cues:[], extras:[]};
+var CACHE = "soundboard-v1";
+var LS = "soundboard:" + SHOWCFG.title;
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---------- per-device edits ---------- */
+var edits = {};
+try { edits = JSON.parse(localStorage.getItem(LS) || "{}") || {}; } catch(e) { edits = {}; }
+function saveEdits(){ try { localStorage.setItem(LS, JSON.stringify(edits)); } catch(e) {} }
+
+var allItems = [];
+SHOWCFG.cues.forEach(function(c){ c._list = "cue"; allItems.push(c); });
+SHOWCFG.extras.forEach(function(c){ c._list = "extra"; allItems.push(c); });
+var byId = {}; allItems.forEach(function(c){ byId[c.id] = c; });
+
+function eff(c){
+  var e = Object.assign({}, c, edits[c.id] || {});
+  if (e.volume == null) e.volume = 100;
+  e.fadeIn = +e.fadeIn || 0; e.fadeOut = +e.fadeOut || 0; e.loop = !!e.loop;
+  if (!e.retrigger) e.retrigger = e.loop ? "toggle" : "overlap";
+  return e;
+}
+
+/* ---------- audio engine ---------- */
+var ctx = null, master = null;
+var buffers = {};       // file -> AudioBuffer | "error"
+var voices = [];        // {cue, src, g, start, dur, loop, fading, preview}
+function gainFor(v){ var x = Math.max(0, Math.min(100, v)) / 100; return x * x; } // perceptual curve
+
+function makeContext(){
+  try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch(e) {}  // iPad: play even with ring/silent switch on
+  var AC = window.AudioContext || window.webkitAudioContext;
+  ctx = new AC({latencyHint:"interactive"});
+  master = ctx.createGain(); master.connect(ctx.destination);
+  setMaster(+$("master").value);
+}
+function setMaster(v){ $("masterOut").textContent = v + "%"; if (master) master.gain.setTargetAtTime(gainFor(v), ctx.currentTime, 0.02); }
+
+function decode(ab){
+  return new Promise(function(res, rej){ var p = ctx.decodeAudioData(ab, res, rej); if (p && p.catch) p.catch(rej); });
+}
+function loadAll(onProgress){
+  var files = []; allItems.forEach(function(c){ if (c.file && files.indexOf(c.file) < 0) files.push(c.file); });
+  var done = 0;
+  return Promise.all(files.map(function(f){
+    return fetch(f).then(function(r){ if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(decode).then(function(b){ buffers[f] = b; })
+      .catch(function(){ buffers[f] = "error"; })
+      .then(function(){ done++; onProgress(done, files.length); });
+  })).then(function(){ return files; });
+}
+
+function hasAudio(c){ return c.file && buffers[c.file] && buffers[c.file] !== "error"; }
+
+function play(c, opts){
+  opts = opts || {};
+  var e = eff(c);
+  if (!hasAudio(e)) { toast(e.id + ": sound file missing (" + e.file + ")"); return; }
+  if (ctx.state !== "running") ctx.resume();
+  var live = voices.filter(function(v){ return v.cue.id === c.id && !v.fading && !v.preview; });
+  if (live.length && !opts.preview) {
+    if (e.retrigger === "toggle" && !opts.fromGo) { live.forEach(function(v){ fade(v, e.fadeOut || 1.5); }); return; }
+    if (e.retrigger === "restart") live.forEach(function(v){ fade(v, 0.05); });
+  }
+  var now = ctx.currentTime, target = gainFor(e.volume);
+  var src = ctx.createBufferSource(); src.buffer = buffers[e.file]; src.loop = e.loop;
+  var g = ctx.createGain();
+  if (e.fadeIn > 0) { g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(target, now + e.fadeIn); }
+  else g.gain.setValueAtTime(target, now);
+  src.connect(g); g.connect(master);
+  var v = {cue:c, src:src, g:g, start:now, dur:src.buffer.duration, loop:e.loop, fading:false, preview:!!opts.preview, key:Math.random()};
+  src.onended = function(){ voices = voices.filter(function(x){ return x !== v; }); render(); };
+  src.start(now);
+  voices.push(v); render();
+}
+function fade(v, secs){
+  if (v.ended) return;
+  var now = ctx.currentTime, cur = v.g.gain.value;
+  secs = Math.max(0.03, secs);
+  v.g.gain.cancelScheduledValues(now);
+  v.g.gain.setValueAtTime(Math.max(cur, 0.0001), now);
+  v.g.gain.linearRampToValueAtTime(0.0001, now + secs);
+  try { v.src.stop(now + secs + 0.02); } catch(e) {}
+  v.fading = true; v.ended = secs < 0.1; render();
+}
+function fadeCue(id, secs, hard){
+  voices.forEach(function(v){
+    if (v.cue.id === id) fade(v, hard ? 0.03 : (secs != null ? secs : (eff(v.cue).fadeOut || 2)));
+  });
+}
+function stopAll(){ voices.forEach(function(v){ fade(v, 0.08); }); toast("Stopped all"); }
+function fadeAll(){ voices.forEach(function(v){ if (!v.fading) fade(v, 3); }); toast("Fading all over 3 s"); }
+
+/* ---------- cue list / GO ---------- */
+var standby = 0, goLockUntil = 0;
+function fire(c){
+  if (c.action === "fade") fadeCue(c.target, c.fade != null ? +c.fade : null);
+  else if (c.action === "stop") fadeCue(c.target, 0, true);
+  else play(c, {fromGo:true});
+}
+function go(){
+  var t = performance.now();
+  if (t < goLockUntil || standby >= SHOWCFG.cues.length) return;   // guard against an accidental double tap
+  goLockUntil = t + 350; $("goBtn").classList.add("locked"); setTimeout(function(){ $("goBtn").classList.remove("locked"); }, 350);
+  var c = SHOWCFG.cues[standby];
+  fire(c);
+  standby++; renderCues(true);
+}
+function setStandby(i){ standby = Math.max(0, Math.min(SHOWCFG.cues.length, i)); renderCues(true); }
+
+function describe(c){
+  if (c.action === "fade") return '<span class="tag fade">Fade ' + esc(c.target) + "</span>" + (c.fade != null ? '<span class="num">' + c.fade + " s</span>" : "");
+  if (c.action === "stop") return '<span class="tag stop">Stop ' + esc(c.target) + "</span>";
+  var e = eff(c), out = "";
+  if (!hasAudio(e) && buffers[e.file] === "error") out += '<span class="tag miss">Missing</span>';
+  if (e.loop) out += '<span class="tag loop">Loop</span>';
+  if (hasAudio(e)) out += '<span class="num">' + fmt(buffers[e.file].duration) + "</span>";
+  return out;
+}
+function renderCues(scroll){
+  var list = $("cueList"); list.innerHTML = "";
+  SHOWCFG.cues.forEach(function(c, i){
+    var li = document.createElement("li");
+    li.className = "cue" + (i < standby ? " done" : "") + (i === standby ? " standby" : "");
+    li.tabIndex = 0; li.dataset.i = i;
+    li.innerHTML = '<span class="id num">' + esc(c.id) + '</span><span class="nm">' + esc(c.name || "") + '</span><span class="meta">' + describe(c) + "</span>" + (c.note ? '<span class="nt">' + esc(c.note) + "</span>" : "");
+    list.appendChild(li);
+  });
+  var c = SHOWCFG.cues[standby];
+  $("sbId").textContent = c ? c.id : "—";
+  $("sbName").textContent = c ? (c.name || "") : "End of cue list";
+  $("sbNote").textContent = c && c.note ? "Called on: " + c.note : "";
+  $("goBtn").disabled = !c;
+  if (scroll) { var el = list.children[Math.min(standby, list.children.length - 1)]; if (el) el.scrollIntoView({block:"nearest"}); }
+  markLive();
+}
+$("cueList").addEventListener("click", function(ev){
+  var li = ev.target.closest(".cue"); if (!li) return;
+  var c = SHOWCFG.cues[+li.dataset.i];
+  if (editing) { if (!c.action) openInspector(c); return; }
+  setStandby(+li.dataset.i);
+});
+
+/* ---------- extras grid ---------- */
+function renderGrid(){
+  var grid = $("grid"); grid.innerHTML = "";
+  SHOWCFG.extras.forEach(function(c){
+    var e = eff(c), b = document.createElement("button");
+    b.className = "pad" + (e.loop ? " lp" : "") + (buffers[e.file] === "error" ? " missing" : "");
+    b.dataset.id = c.id;
+    b.innerHTML = '<span class="fill"></span><span class="pn">' + esc(c.name) + '</span><span class="pm"><span>' + (buffers[e.file] === "error" ? "Missing file" : (e.loop ? "Loop" : (hasAudio(e) ? fmt(buffers[e.file].duration) : ""))) + "</span>" + (c.key ? "<kbd>" + esc(c.key) + "</kbd>" : "") + "</span>";
+    grid.appendChild(b);
+  });
+}
+$("grid").addEventListener("click", function(ev){
+  var b = ev.target.closest(".pad"); if (!b) return;
+  var c = byId[b.dataset.id];
+  if (editing) openInspector(c); else play(c);
+});
+
+/* ---------- now playing ---------- */
+function render(){
+  var ul = $("voices"); ul.innerHTML = "";
+  voices.forEach(function(v){
+    var li = document.createElement("li");
+    li.className = "voice" + (v.loop ? " lp" : "") + (v.fading ? " fading" : "");
+    li.innerHTML = '<span class="vn"><span class="num">' + esc(v.cue.id) + "</span><b>" + esc(v.cue.name) + "</b>" + (v.preview ? " (preview)" : "") + (v.fading ? " · fading" : "") + '</span><span class="t num"></span><span class="row" style="gap:6px"><button class="f">Fade</button><button class="x">Stop</button></span><span class="bar2"><i></i></span>';
+    li.querySelector(".f").onclick = function(){ fade(v, eff(v.cue).fadeOut || 2); };
+    li.querySelector(".x").onclick = function(){ fade(v, 0.05); };
+    v.el = li; ul.appendChild(li);
+  });
+  $("noVoices").hidden = voices.length > 0;
+  $("voiceCount").textContent = voices.length ? voices.length + " playing" : "";
+  markLive();
+}
+function markLive(){
+  var live = {}; voices.forEach(function(v){ if (!v.fading) live[v.cue.id] = true; });
+  Array.prototype.forEach.call(document.querySelectorAll(".pad"), function(p){ p.classList.toggle("live", !!live[p.dataset.id]); });
+  Array.prototype.forEach.call(document.querySelectorAll(".cue"), function(li){ var c = SHOWCFG.cues[+li.dataset.i]; li.classList.toggle("live", !!live[c.id]); });
+}
+function tick(){
+  if (ctx) {
+    var pads = {};
+    voices.forEach(function(v){
+      var el = v.el; if (!el) return;
+      var t = ctx.currentTime - v.start, frac;
+      if (v.loop) { t = t % v.dur; frac = t / v.dur; el.querySelector(".t").textContent = "loop " + fmt(t); }
+      else { frac = Math.min(1, t / v.dur); el.querySelector(".t").textContent = "−" + fmt(Math.max(0, v.dur - t)); }
+      el.querySelector(".bar2 i").style.width = (frac * 100).toFixed(1) + "%";
+      if (!v.fading) pads[v.cue.id] = Math.max(pads[v.cue.id] || 0, frac);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".pad"), function(p){
+      var f = pads[p.dataset.id]; p.querySelector(".fill").style.width = f != null ? (f * 100).toFixed(1) + "%" : "0";
+    });
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- edit mode ---------- */
+var editing = false, insCue = null;
+$("editBtn").onclick = function(){
+  editing = !editing; document.body.classList.toggle("editing", editing);
+  this.classList.toggle("on", editing); this.setAttribute("aria-pressed", editing); this.textContent = editing ? "Done editing" : "Edit";
+};
+function openInspector(c){
+  insCue = c; var e = eff(c);
+  $("insId").textContent = c.id; $("insName").textContent = c.name;
+  $("insFile").textContent = c.file + (buffers[c.file] === "error" ? " — file not found" : "");
+  $("insVol").value = e.volume; $("insIn").value = e.fadeIn; $("insOut").value = e.fadeOut; $("insLoop").checked = e.loop;
+  syncIns(); $("inspector").hidden = false;
+}
+function syncIns(){
+  $("insVolOut").textContent = $("insVol").value + "%";
+  $("insInOut").textContent = (+$("insIn").value).toFixed(1) + " s";
+  $("insOutOut").textContent = (+$("insOut").value).toFixed(1) + " s";
+}
+function storeIns(){
+  var c = insCue, ed = {};
+  var vals = {volume:+$("insVol").value, fadeIn:+$("insIn").value, fadeOut:+$("insOut").value, loop:$("insLoop").checked};
+  var orig = {volume:c.volume == null ? 100 : c.volume, fadeIn:+c.fadeIn || 0, fadeOut:+c.fadeOut || 0, loop:!!c.loop};
+  Object.keys(vals).forEach(function(k){ if (vals[k] !== orig[k]) ed[k] = vals[k]; });
+  if (Object.keys(ed).length) edits[c.id] = ed; else delete edits[c.id];
+  saveEdits(); syncIns();
+  voices.forEach(function(v){ if (v.cue.id === c.id && !v.fading) { v.g.gain.setTargetAtTime(gainFor(vals.volume), ctx.currentTime, 0.03); v.src.loop = vals.loop; v.loop = vals.loop; } });
+}
+["insVol","insIn","insOut","insLoop"].forEach(function(id){ $(id).addEventListener("input", storeIns); $(id).addEventListener("change", storeIns); });
+$("insPlay").onclick = function(){ play(insCue, {preview:true}); };
+$("insStop").onclick = function(){ voices.forEach(function(v){ if (v.preview) fade(v, eff(v.cue).fadeOut || 0.2); }); };
+$("insRevert").onclick = function(){ delete edits[insCue.id]; saveEdits(); openInspector(insCue); toast(insCue.id + " back to the show file's settings"); };
+$("insClose").onclick = closeInspector;
+$("inspector").addEventListener("click", function(ev){ if (ev.target === this) closeInspector(); });
+function closeInspector(){ $("inspector").hidden = true; renderCues(); renderGrid(); markLive(); }
+
+var resetArmed = false;
+$("resetBtn").onclick = function(){
+  if (!resetArmed) { resetArmed = true; this.textContent = "Tap again to undo all"; var b = this; setTimeout(function(){ resetArmed = false; b.textContent = "Undo all edits"; }, 3000); return; }
+  edits = {}; saveEdits(); resetArmed = false; this.textContent = "Undo all edits"; renderCues(); renderGrid(); toast("All edits cleared");
+};
+
+function exportText(){
+  function line(c){
+    var o = {}; Object.keys(c).forEach(function(k){ if (k[0] !== "_") o[k] = c[k]; });
+    if (!c.action) Object.assign(o, edits[c.id] || {});
+    return "    " + JSON.stringify(o);
+  }
+  var head = "/* SHOW FILE — exported from the soundboard " + new Date().toLocaleString() + ".\n   See the original cues.js for a description of every field. */\n";
+  return head + "var SHOW = {\n  \"title\": " + JSON.stringify(SHOWCFG.title) + ",\n  \"cues\": [\n" + SHOWCFG.cues.map(line).join(",\n") + "\n  ],\n  \"extras\": [\n" + SHOWCFG.extras.map(line).join(",\n") + "\n  ]\n};\n";
+}
+$("exportBtn").onclick = function(){ $("expText").value = exportText(); $("exporter").hidden = false; };
+$("expClose").onclick = function(){ $("exporter").hidden = true; };
+$("expCopy").onclick = function(){
+  var t = $("expText").value;
+  var fallback = function(){ $("expText").select(); toast("Selected. Press Ctrl/⌘+C to copy."); };
+  try { navigator.clipboard.writeText(t).then(function(){ toast("Copied show file"); }, fallback); } catch(e) { fallback(); }
+};
+$("expDownload").onclick = function(){
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([$("expText").value], {type:"text/javascript"}));
+  a.download = "cues.js"; document.body.appendChild(a); a.click(); a.remove();
+  toast("If nothing downloaded, use Copy instead");
+};
+
+/* ---------- controls ---------- */
+$("goBtn").onclick = go;
+$("prevBtn").onclick = function(){ setStandby(standby - 1); };
+$("nextBtn").onclick = function(){ setStandby(standby + 1); };
+$("topBtn").onclick = function(){ setStandby(0); };
+$("stopAllBtn").onclick = stopAll;
+$("fadeAllBtn").onclick = fadeAll;
+$("master").addEventListener("input", function(){ setMaster(+this.value); });
+
+document.addEventListener("keydown", function(ev){
+  if (!$("gate").hidden || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if (ev.target.tagName === "TEXTAREA" || (ev.target.tagName === "INPUT" && ev.target.type !== "range" && ev.target.type !== "checkbox")) return;
+  if (ev.key === "Escape") { ev.preventDefault(); if (!$("inspector").hidden) closeInspector(); else if (!$("exporter").hidden) $("exporter").hidden = true; else stopAll(); return; }
+  if (!$("inspector").hidden || !$("exporter").hidden) return;
+  if (ev.key === " " || ev.code === "Space") { ev.preventDefault(); if (!ev.repeat) go(); return; }
+  if (ev.key === "ArrowDown") { ev.preventDefault(); setStandby(standby + 1); return; }
+  if (ev.key === "ArrowUp") { ev.preventDefault(); setStandby(standby - 1); return; }
+  if (ev.repeat) return;
+  if (ev.key === "f" || ev.key === "F") { fadeAll(); return; }
+  var k = ev.key.toLowerCase();
+  SHOWCFG.extras.forEach(function(c){ if (c.key && c.key.toLowerCase() === k) { ev.preventDefault(); play(c); } });
+});
+
+/* ---------- screen wake lock ---------- */
+var wake = null;
+function keepAwake(){
+  if (!("wakeLock" in navigator)) { chip("wakeChip", "warn", "Auto-lock: set it to Never"); return; }
+  navigator.wakeLock.request("screen").then(function(w){
+    wake = w; chip("wakeChip", "ok", "Screen stays on");
+    w.addEventListener("release", function(){ chip("wakeChip", "warn", "Screen may sleep"); });
+  }).catch(function(){ chip("wakeChip", "warn", "Auto-lock: set it to Never"); });
+}
+document.addEventListener("visibilitychange", function(){
+  if (document.visibilityState === "visible") { keepAwake(); if (ctx && ctx.state !== "running") ctx.resume(); }
+});
+
+/* ---------- offline copy ---------- */
+function setupOffline(files){
+  var list = ["./", "cues.js"].concat(files);
+  if (!("serviceWorker" in navigator) || !window.caches || location.protocol !== "https:" && location.hostname !== "localhost") {
+    chip("offlineChip", "warn", "Online only here"); return;
+  }
+  navigator.serviceWorker.register("sw.js").then(function(){
+    return caches.open(CACHE).then(function(cache){
+      return Promise.all(list.map(function(u){ return cache.add(u).catch(function(){ throw u; }); }));
+    });
+  }).then(function(){ chip("offlineChip", "ok", "Saved for offline"); },
+          function(){ chip("offlineChip", "warn", "Online only here"); });
+}
+
+/* ---------- helpers ---------- */
+function chip(id, cls, text){ var el = $(id); el.className = "chip " + cls; el.textContent = text; }
+function fmt(s){ s = Math.max(0, s); var m = Math.floor(s / 60), r = s - m * 60; return m + ":" + (r < 10 ? "0" : "") + r.toFixed(1); }
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(ch){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]; }); }
+var toastT;
+function toast(msg){ var t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function(){ t.hidden = true; }, 2200); }
+
+/* ---------- boot ---------- */
+document.title = SHOWCFG.title + " · Soundboard";
+$("title").textContent = SHOWCFG.title; $("gateTitle").textContent = SHOWCFG.title;
+makeContext();
+renderCues(); renderGrid(); render();
+loadAll(function(d, n){ $("meter").style.width = (d / n * 100) + "%"; $("loadmsg").textContent = "Loaded " + d + " of " + n + " sound files"; })
+  .then(function(files){
+    var bad = files.filter(function(f){ return buffers[f] === "error"; });
+    $("loadmsg").textContent = bad.length ? bad.length + " file(s) missing: " + bad.join(", ") : "All " + files.length + " sound files ready";
+    chip("filesChip", bad.length ? "bad" : "ok", bad.length ? bad.length + " missing files" : files.length + " files loaded");
+    renderCues(); renderGrid();
+    setupOffline(files);
+  });
+$("startBtn").onclick = function(){
+  ctx.resume();
+  // iOS unlock: play one silent sample inside the tap
+  var s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0);
+  $("gate").hidden = true; keepAwake();
+};
+requestAnimationFrame(tick);
+})();
+</script>
+
+</body></html>
