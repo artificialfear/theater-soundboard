@@ -33,7 +33,7 @@
    that device only. Use "Export show file" to copy them back here.
    ============================================================ */
 var SHOW = {
-  "title": "Sample Show — Act I",
+  "title": "Through the Looking Glass",
   "editPasscodeHash": "920805781797e6b9ee907fe5966e00fbdd96b42c46f092b00f0928da24cef7de",
   "cues": [
     {"id":"Q1","name":"Preshow crickets","file":"sounds/crickets-loop.wav","loop":true,"volume":55,"fadeIn":3,"fadeOut":4,"note":"House open"},
