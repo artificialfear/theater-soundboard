@@ -147,6 +147,20 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
 .loadmsg{font-size:13px;color:var(--dim)}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:13px;z-index:40}
 
+/* passcode keypad */
+.lockdots{display:flex;gap:12px;justify-content:center;min-height:22px}
+.lockdots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--dim)}
+.lockdots i.on{background:var(--standby);border-color:var(--standby)}
+.lockmsg{text-align:center;min-height:1.3em;font-size:13px;color:var(--dim)}
+.lockmsg.bad{color:var(--stop)}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:320px;width:100%;margin:0 auto}
+.keypad button{font-family:var(--mono);font-size:24px;padding:14px 0;border-radius:var(--r);background:var(--raise);border:1px solid var(--line)}
+.keypad button.wide{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase}
+.keypad button.ok{background:var(--go);color:var(--go-ink);border-color:var(--go)}
+.keypad button:active{transform:translateY(1px)}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+.lockicon{width:12px;height:12px;margin-right:6px;vertical-align:-1px}
 @media (max-width:820px){
   body{overflow:auto}
   html,body{height:auto}
@@ -184,14 +198,14 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
       <div class="status"><span class="chip" id="offlineChip">Checking offline copy</span><span class="chip" id="wakeChip">Screen lock</span><span class="chip" id="filesChip">Files</span></div>
     </div>
     <div class="master"><label for="master">Master</label><input type="range" id="master" min="0" max="100" value="100"><output id="masterOut" class="num">100%</output></div>
-    <button class="btn" id="editBtn" aria-pressed="false">Edit</button>
+    <button class="btn" id="editBtn" aria-pressed="false"><svg class="lockicon" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="5.5" width="9" height="6" rx="1.2" fill="currentColor"/><path d="M3.5 5.5V4a2.5 2.5 0 0 1 5 0v1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg><span id="editLabel">Edit</span></button>
     <button class="btn fadeall" id="fadeAllBtn" title="Fade everything out over 3 seconds (F)">Fade all</button>
     <button class="btn stopall" id="stopAllBtn" title="Stop everything now (Esc)">Stop all</button>
   </header>
 
   <div class="main">
     <div class="col">
-      <div class="editbanner"><span>Edit mode: tap a cue or button to set its volume, fades and looping. Changes save on this device.</span><button class="btn" id="exportBtn">Export show file</button><button class="btn" id="resetBtn">Undo all edits</button></div>
+      <div class="editbanner"><span>Edit mode: tap a cue or button to set its volume, fades and looping. Changes save on this device.</span><button class="btn" id="exportBtn">Export show file</button><button class="btn" id="resetBtn">Undo all edits</button><button class="btn" id="pinBtn">Change passcode</button></div>
       <section class="panel">
         <div class="goblock">
           <div style="min-width:0">
@@ -240,6 +254,22 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
     <p>This is your show file with this device's edits included. Replace <b>cues.js</b> in the board's folder with it, then upload the folder again so every device gets the same levels.</p>
     <textarea id="expText" readonly></textarea>
     <div class="row"><button class="btn primary" id="expCopy">Copy</button><button class="btn" id="expDownload">Download cues.js</button><button class="btn" id="expClose" style="margin-left:auto">Close</button></div>
+  </div>
+</div>
+
+<div class="scrim" id="locker" hidden>
+  <div class="sheet" role="dialog" aria-labelledby="lockTitle">
+    <h3 id="lockTitle">Director passcode</h3>
+    <p id="lockHelp">Edit mode changes volumes and fades. Enter the passcode to unlock it.</p>
+    <div class="lockdots" id="lockDots" aria-live="polite"></div>
+    <div class="lockmsg" id="lockMsg"></div>
+    <div class="keypad" id="keypad">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button data-k="back" class="wide">Delete</button><button data-k="0">0</button><button data-k="ok" class="wide ok" id="lockOk">Unlock</button>
+    </div>
+    <div class="row"><button class="btn" id="lockCancel" style="margin-left:auto">Cancel</button></div>
   </div>
 </div>
 
@@ -449,10 +479,81 @@ function tick(){
 
 /* ---------- edit mode ---------- */
 var editing = false, insCue = null;
+function setEditing(on){
+  editing = on; document.body.classList.toggle("editing", on);
+  $("editBtn").classList.toggle("on", on); $("editBtn").setAttribute("aria-pressed", on);
+  $("editLabel").textContent = on ? "Done editing" : "Edit";
+  $("editBtn").querySelector(".lockicon").style.display = on ? "none" : "";
+}
 $("editBtn").onclick = function(){
-  editing = !editing; document.body.classList.toggle("editing", editing);
-  this.classList.toggle("on", editing); this.setAttribute("aria-pressed", editing); this.textContent = editing ? "Done editing" : "Edit";
+  if (editing) { setEditing(false); toast("Edit mode locked"); return; }   // leaving edit mode always relocks
+  if (!passHash) { setEditing(true); return; }
+  openLock("unlock");
 };
+
+/* ---------- passcode lock ---------- */
+// The show file stores only a scrambled (SHA-256) form of the passcode, so reading cues.js doesn't reveal it.
+// A passcode changed on this device wins until a new show file with a different passcode is uploaded.
+var passHash = SHOWCFG.editPasscodeHash || null;
+try { var lp = JSON.parse(localStorage.getItem(LS + ":pass") || "null"); if (lp && lp.base === (SHOWCFG.editPasscodeHash || null)) passHash = lp.hash; } catch(e) {}
+var lockMode = "unlock", lockEntry = "", lockFirst = "", wrong = 0, lockedUntil = 0;
+function hashCode(code){
+  if (!(window.crypto && crypto.subtle)) return Promise.reject(new Error("nosubtle"));
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode("soundboard:" + code)).then(function(buf){
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ("0" + b.toString(16)).slice(-2); }).join("");
+  });
+}
+function openLock(mode){
+  lockMode = mode; lockEntry = ""; lockFirst = "";
+  $("lockTitle").textContent = mode === "unlock" ? "Director passcode" : "New passcode";
+  $("lockHelp").textContent = mode === "unlock" ? "Edit mode changes volumes and fades. Enter the passcode to unlock it." : "Choose 4 to 8 digits. You'll enter it twice.";
+  $("lockOk").textContent = mode === "unlock" ? "Unlock" : "Next";
+  lockMessage("", false); drawDots(); $("locker").hidden = false;
+}
+function closeLock(){ $("locker").hidden = true; lockEntry = ""; }
+function drawDots(){
+  var n = Math.max(4, lockEntry.length), h = "";
+  for (var i = 0; i < n; i++) h += '<i class="' + (i < lockEntry.length ? "on" : "") + '"></i>';
+  $("lockDots").innerHTML = h;
+}
+function lockMessage(t, bad){ $("lockMsg").textContent = t; $("lockMsg").className = "lockmsg" + (bad ? " bad" : ""); }
+function shakeLock(){ var d = $("lockDots"); d.classList.remove("shake"); void d.offsetWidth; d.classList.add("shake"); }
+function keyIn(k){
+  if (k === "back") { lockEntry = lockEntry.slice(0, -1); drawDots(); return; }
+  if (k === "ok") { submitLock(); return; }
+  if (lockEntry.length < 8) { lockEntry += k; drawDots(); lockMessage("", false); }
+}
+function submitLock(){
+  if (lockMode === "unlock") {
+    var wait = Math.ceil((lockedUntil - Date.now()) / 1000);
+    if (wait > 0) { lockMessage("Too many tries. Wait " + wait + " s.", true); return; }
+    if (!lockEntry) return;
+    hashCode(lockEntry).then(function(h){
+      if (h === passHash) { wrong = 0; closeLock(); setEditing(true); toast("Edit mode unlocked"); }
+      else {
+        wrong++; lockEntry = ""; drawDots(); shakeLock();
+        if (wrong >= 5) { lockedUntil = Date.now() + 30000; wrong = 0; lockMessage("Wrong code. Locked for 30 s.", true); }
+        else lockMessage("Wrong code", true);
+      }
+    }, function(){ lockMessage("This page must be opened from its https link to unlock.", true); });
+    return;
+  }
+  // setting a new passcode
+  if (!lockFirst) {
+    if (lockEntry.length < 4) { lockMessage("Use at least 4 digits", true); shakeLock(); return; }
+    lockFirst = lockEntry; lockEntry = ""; drawDots();
+    $("lockOk").textContent = "Save"; lockMessage("Enter it again to confirm", false); return;
+  }
+  if (lockEntry !== lockFirst) { lockFirst = ""; lockEntry = ""; drawDots(); shakeLock(); $("lockOk").textContent = "Next"; lockMessage("Those didn't match. Start over.", true); return; }
+  hashCode(lockEntry).then(function(h){
+    passHash = h; try { localStorage.setItem(LS + ":pass", JSON.stringify({base: SHOWCFG.editPasscodeHash || null, hash: h})); } catch(e) {}
+    closeLock(); toast("Passcode changed on this device. Export the show file to use it everywhere.");
+  }, function(){ lockMessage("This page must be opened from its https link to change the passcode.", true); });
+}
+$("keypad").addEventListener("click", function(ev){ var b = ev.target.closest("button"); if (b) keyIn(b.dataset.k); });
+$("lockCancel").onclick = closeLock;
+$("locker").addEventListener("click", function(ev){ if (ev.target === this) closeLock(); });
+$("pinBtn").onclick = function(){ openLock("set"); };
 function openInspector(c){
   insCue = c; var e = eff(c);
   $("insId").textContent = c.id; $("insName").textContent = c.name;
@@ -495,7 +596,7 @@ function exportText(){
     return "    " + JSON.stringify(o);
   }
   var head = "/* SHOW FILE — exported from the soundboard " + new Date().toLocaleString() + ".\n   See the original cues.js for a description of every field. */\n";
-  return head + "var SHOW = {\n  \"title\": " + JSON.stringify(SHOWCFG.title) + ",\n  \"cues\": [\n" + SHOWCFG.cues.map(line).join(",\n") + "\n  ],\n  \"extras\": [\n" + SHOWCFG.extras.map(line).join(",\n") + "\n  ]\n};\n";
+  return head + "var SHOW = {\n  \"title\": " + JSON.stringify(SHOWCFG.title) + ",\n" + (passHash ? "  \"editPasscodeHash\": " + JSON.stringify(passHash) + ",\n" : "") + "  \"cues\": [\n" + SHOWCFG.cues.map(line).join(",\n") + "\n  ],\n  \"extras\": [\n" + SHOWCFG.extras.map(line).join(",\n") + "\n  ]\n};\n";
 }
 $("exportBtn").onclick = function(){ $("expText").value = exportText(); $("exporter").hidden = false; };
 $("expClose").onclick = function(){ $("exporter").hidden = true; };
@@ -523,6 +624,13 @@ $("master").addEventListener("input", function(){ setMaster(+this.value); });
 document.addEventListener("keydown", function(ev){
   if (!$("gate").hidden || ev.metaKey || ev.ctrlKey || ev.altKey) return;
   if (ev.target.tagName === "TEXTAREA" || (ev.target.tagName === "INPUT" && ev.target.type !== "range" && ev.target.type !== "checkbox")) return;
+  if (!$("locker").hidden) {
+    if (/^[0-9]$/.test(ev.key)) { ev.preventDefault(); keyIn(ev.key); }
+    else if (ev.key === "Backspace") { ev.preventDefault(); keyIn("back"); }
+    else if (ev.key === "Enter") { ev.preventDefault(); keyIn("ok"); }
+    else if (ev.key === "Escape") { ev.preventDefault(); closeLock(); }
+    return;
+  }
   if (ev.key === "Escape") { ev.preventDefault(); if (!$("inspector").hidden) closeInspector(); else if (!$("exporter").hidden) $("exporter").hidden = true; else stopAll(); return; }
   if (!$("inspector").hidden || !$("exporter").hidden) return;
   if (ev.key === " " || ev.code === "Space") { ev.preventDefault(); if (!ev.repeat) go(); return; }
