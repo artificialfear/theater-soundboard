@@ -159,6 +159,13 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
 .loadmsg{font-size:13px;color:var(--dim)}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:13px;z-index:40}
 
+/* optional wallpaper (set in cues.js) */
+.wall{position:fixed;inset:0;z-index:0;background-size:cover;background-position:center;pointer-events:none}
+.wall::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:var(--dim,.7)}
+body.has-wall .app{position:relative;z-index:1}
+body.has-wall .panel{background:rgba(19,24,33,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+body.has-wall .gate{background:rgba(11,14,19,.35)}
+body.gated .app{visibility:hidden}
 /* text fields in Edit mode */
 .trow{display:grid;grid-template-columns:6.5em minmax(0,1fr);gap:10px}
 .trow.withkey{grid-template-columns:6.5em minmax(0,1fr) 4.5em}
@@ -671,7 +678,9 @@ function exportText(){
     return "    " + JSON.stringify(o);
   }
   var head = "/* SHOW FILE — exported from the soundboard " + new Date().toLocaleString() + ".\n   See the original cues.js for a description of every field. */\n";
-  return head + "var SHOW = {\n  \"title\": " + JSON.stringify(showTitle()) + ",\n" + (passHash ? "  \"editPasscodeHash\": " + JSON.stringify(passHash) + ",\n" : "") + "  \"cues\": [\n" + SHOWCFG.cues.map(line).join(",\n") + "\n  ],\n  \"extras\": [\n" + SHOWCFG.extras.map(line).join(",\n") + "\n  ]\n};\n";
+  return head + "var SHOW = {\n  \"title\": " + JSON.stringify(showTitle()) + ",\n" + (passHash ? "  \"editPasscodeHash\": " + JSON.stringify(passHash) + ",\n" : "") +
+    (SHOWCFG.wallpaper ? "  \"wallpaper\": " + JSON.stringify(SHOWCFG.wallpaper) + ",\n" : "") +
+    (SHOWCFG.wallpaperDim != null ? "  \"wallpaperDim\": " + JSON.stringify(SHOWCFG.wallpaperDim) + ",\n" : "") + "  \"cues\": [\n" + SHOWCFG.cues.map(line).join(",\n") + "\n  ],\n  \"extras\": [\n" + SHOWCFG.extras.map(line).join(",\n") + "\n  ]\n};\n";
 }
 $("exportBtn").onclick = function(){ $("expText").value = exportText(); $("exporter").hidden = false; };
 $("expClose").onclick = function(){ $("exporter").hidden = true; };
@@ -733,6 +742,7 @@ document.addEventListener("visibilitychange", function(){
 /* ---------- offline copy ---------- */
 function setupOffline(files){
   var list = ["./", "cues.js"].concat(files);
+  if (SHOWCFG.wallpaper) list.push(SHOWCFG.wallpaper);
   if (!("serviceWorker" in navigator) || !window.caches || location.protocol !== "https:" && location.hostname !== "localhost") {
     chip("offlineChip", "warn", "Online only here"); return;
   }
@@ -753,6 +763,14 @@ function toast(msg){ var t = $("toast"); t.textContent = msg; t.hidden = false; 
 
 /* ---------- boot ---------- */
 applyTitle();
+document.body.classList.add("gated");
+if (SHOWCFG.wallpaper) {
+  var wall = document.createElement("div"); wall.className = "wall";
+  wall.style.backgroundImage = 'url("' + encodeURI(SHOWCFG.wallpaper) + '")';
+  var dim = SHOWCFG.wallpaperDim == null ? 55 : Math.max(0, Math.min(100, +SHOWCFG.wallpaperDim));
+  wall.style.setProperty("--dim", dim / 100);
+  document.body.insertBefore(wall, document.body.firstChild); document.body.classList.add("has-wall");
+}
 makeContext();
 renderCues(); renderGrid(); render();
 loadAll(function(d, n){ $("meter").style.width = (d / n * 100) + "%"; $("loadmsg").textContent = "Loaded " + d + " of " + n + " sound files"; })
@@ -767,7 +785,7 @@ $("startBtn").onclick = function(){
   ctx.resume();
   // iOS unlock: play one silent sample inside the tap
   var s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0);
-  $("gate").hidden = true; keepAwake();
+  $("gate").hidden = true; document.body.classList.remove("gated"); keepAwake();
 };
 requestAnimationFrame(tick);
 })();
