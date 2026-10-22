@@ -42,7 +42,7 @@
 var SHOW = {
   "title": "Sample Show — Act I",
   "editPasscodeHash": "920805781797e6b9ee907fe5966e00fbdd96b42c46f092b00f0928da24cef7de",
-  "wallpaper": "images/wallpaper.jpg",
+  "wallpaper": "images/wonderland.jpg",
   "wallpaperDim": 55,
   "cues": [
     {"id":"Q1","name":"Preshow crickets","file":"sounds/crickets-loop.wav","loop":true,"volume":55,"fadeIn":3,"fadeOut":4,"note":"House open"},

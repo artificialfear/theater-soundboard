@@ -164,7 +164,8 @@ textarea{width:100%;box-sizing:border-box;height:220px;background:var(--bg);colo
 .wall::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:var(--dim,.7)}
 body.has-wall .app{position:relative;z-index:1}
 body.has-wall .panel{background:rgba(19,24,33,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-body.has-wall .gate{background:rgba(11,14,19,.35)}
+body.has-wall .gate{background:linear-gradient(90deg,rgba(11,14,19,.7) 0%,rgba(11,14,19,.35) 45%,rgba(11,14,19,0) 70%)}
+@media (min-width:821px){ body.has-wall .gate{justify-content:flex-start;padding-left:max(6vw,env(safe-area-inset-left,0px))} body.has-wall .gate-in{max-width:400px} }
 body.gated .app{visibility:hidden}
 /* text fields in Edit mode */
 .trow{display:grid;grid-template-columns:6.5em minmax(0,1fr);gap:10px}
