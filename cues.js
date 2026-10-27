@@ -40,7 +40,7 @@
    that device only. Use "Export show file" to copy them back here.
    ============================================================ */
 var SHOW = {
-  "title": "Through the Looking Glass (One Act)",
+  "title": "Looking Glass Land",
   "editPasscodeHash": "920805781797e6b9ee907fe5966e00fbdd96b42c46f092b00f0928da24cef7de",
   "wallpaper": "images/wonderland.jpg",
   "wallpaperDim": 55,
