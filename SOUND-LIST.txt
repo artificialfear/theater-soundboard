@@ -1,0 +1,24 @@
+LOOKING GLASS LAND — SOUND FILES
+Every file in sounds/ right now is a computer-made PLACEHOLDER for rehearsal.
+Replace each one by uploading your real sound to sounds/ with the EXACT same name.
+(To use a different name or format, change the "file" line for that cue in cues.js.)
+
+File                     Used by           Plays as      What it should be
+preshow.mp3              Q1                loops         Preshow / open-house music
+transformation.wav       Q3, Q25, X6       loops         Magical transition music (seamless loop)
+looking-glass.mp3        Q4, X4            once          Glass shatter or magical chime as Alice goes through the frame
+fanfare.mp3              Q6, Q7, X2        once          Regal trumpet fanfare (3–5 s)
+snore.mp3                Q8, Q9, Q10, X3   once          One loud Red King snore
+snoring-loop.wav         Q11               loops         Steady snoring under dialogue (seamless loop)
+train-loop.wav           Q13               loops         Train chugging (seamless loop)
+arrival-chime.mp3        Q15, Q18, X1      once          "Arrived on a new square" sting (1–3 s)
+alarm-loop.wav           Q16               loops         Alarm or ambulance siren for Humpty's fall (seamless loop)
+intermission.mp3         Q19               loops         Intermission music
+siren.mp3                Q21, X5           once          Seventh-square siren (dive bell / fire house / burglar alarm)
+pageant.mp3              Q22               loops         Miss America pageant music with bells
+responsibilities.mp3     Q24               once          Backing track for The Responsibilities song (your link)
+bows.mp3                 Q27               loops         Bows music
+
+Format tips: .mp3 for music and one-shots. .wav for the four seamless loops
+(transformation, snoring, train, alarm), because .mp3 adds a tiny gap at the loop point.
+Never .ogg (iPads won't play it). Trim silence off the start of every file so it plays right on GO.
