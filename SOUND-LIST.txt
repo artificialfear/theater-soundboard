@@ -1,5 +1,5 @@
 LOOKING GLASS LAND — SOUND FILES
-Real sounds installed Oct 27. Only responsibilities.mp3 is still a computer-made PLACEHOLDER.
+All real sounds installed Oct 27. No placeholders remain.
 Replace each one by uploading your real sound to sounds/ with the EXACT same name.
 (To use a different name or format, change the "file" line for that cue in cues.js.)
 
