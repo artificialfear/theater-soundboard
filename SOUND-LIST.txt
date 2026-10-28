@@ -13,7 +13,6 @@ snoring-loop.mp3         Q11               loops         Steady snoring under di
 train-loop.mp3           Q13               loops         Train chugging (seamless loop)
 arrival-chime.mp3        Q15, Q18, X1      once          "Arrived on a new square" sting (1–3 s)
 alarm-loop.mp3           Q16               loops         Alarm or ambulance siren for Humpty's fall (seamless loop)
-intermission.mp3         Q19               loops         Intermission music
 siren.mp3                Q21, X5           once          Seventh-square siren (dive bell / fire house / burglar alarm)
 pageant.mp3              Q22               loops         Miss America pageant music with bells
 responsibilities.mp3     Q24               once          Backing track for The Responsibilities song (your link)

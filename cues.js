@@ -63,8 +63,6 @@ var SHOW = {
     {"id": "Q16", "name": "Alarm (Humpty falls)", "file": "sounds/alarm-loop.mp3", "loop": true, "volume": 80, "fadeOut": 2, "note": "p.32 Humpty rolls off the wall; chaos"},
     {"id": "Q17", "action": "fade", "target": "Q16", "fade": 2, "name": "Alarm out", "note": "p.32 ALL except ALICE exit"},
     {"id": "Q18", "name": "Sixth square arrival", "file": "sounds/arrival-chime.mp3", "volume": 90, "note": "p.32 Alice steps onto the sixth square"},
-    {"id": "Q19", "name": "Intermission music", "file": "sounds/intermission.mp3", "loop": true, "volume": 60, "fadeIn": 2, "fadeOut": 5, "note": "p.32 End of Act One"},
-    {"id": "Q20", "action": "fade", "target": "Q19", "fade": 5, "name": "Intermission out", "note": "House to half, top of Act Two (p.32 AT RISE)"},
     {"id": "Q21", "name": "Seventh square siren", "file": "sounds/siren.mp3", "volume": 90, "fadeOut": 2, "note": "p.36 ALICE: \"...I don't see anyone.\" (steps onto the seventh square)"},
     {"id": "Q21A", "action": "fade", "target": "Q21", "fade": 2, "name": "Siren out", "note": "p.36 RED KNIGHT ENTERS, before \"Ahoy! Ahoy there! Stop! Ahoy!\""},
     {"id": "Q22", "name": "Pageant music and bells", "file": "sounds/pageant.mp3", "loop": true, "volume": 85, "fadeIn": 0.5, "fadeOut": 3, "note": "p.41 Alice steps into the eighth square"},
